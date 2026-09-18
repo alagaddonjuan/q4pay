@@ -1,0 +1,31 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build"
+    },
+    "devDependencies": {
+        "autoprefixer": "^10.4.17",
+        "axios": "^1.6.4",
+        "laravel-vite-plugin": "^1.0.0",
+        "postcss": "^8.4.35",
+        "tailwindcss": "^4.1.18",
+        "vite": "^5.0.0"
+    },
+    "dependencies": {
+        "@tailwindcss/vite": "^4.1.18",
+        "apexcharts": "3.49.0",
+        "highlight.js": "^11.10.0",
+        "hint.css": "^3.0.0",
+        "jquery": "^3.7.1",
+        "js-datepicker": "^5.18.2",
+        "nice-select2": "^2.1.0",
+        "notyf": "^3.10.0",
+        "preline": "^2.0.3",
+        "quill": "^2.0.2",
+        "sass": "^1.71.0",
+        "swiper": "^11.0.6",
+        "tippy.js": "6.2.5"
+    }
+}

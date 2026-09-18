@@ -1,0 +1,414 @@
+/* // horizontal scroll */
+
+* {
+  &::-webkit-scrollbar {
+    @apply bg-primary/20;
+    transition-duration: 300ms;
+    width: 5px;
+    height: 5px;
+    border-radius: 12px;
+  }
+  &::-webkit-scrollbar-thumb {
+    @apply bg-primary/80;
+    border-radius: 12px;
+    &:hover {
+      @apply bg-primary/100;
+    }
+    transition-duration: 300ms;
+  }
+}
+/* // hovered layout */
+.menu-container {
+  &::-webkit-scrollbar {
+    background-color: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+  }
+}
+
+.menu-container:hover {
+  &::-webkit-scrollbar {
+    @apply bg-primary/20;
+    transition-duration: 300ms;
+    width: 5px;
+    display: block;
+    height: 5px;
+  }
+  &::-webkit-scrollbar-thumb {
+    @apply bg-primary;
+    transition-duration: 300ms;
+    display: block;
+  }
+}
+/* // react calender */
+
+.react-calendar__navigation button {
+  font-size: 1rem !important;
+  &:hover {
+    background-color: transparent !important;
+  }
+}
+.react-calendar__tile--now {
+  @apply bg-primary;
+}
+.react-calendar {
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
+}
+.react-calendar__month-view__weekdays {
+  @apply bg-primary/5;
+  padding: 10px 6px;
+}
+.react-calendar__tile--active {
+  @apply bg-primary;
+}
+abbr:where([title]) {
+  text-decoration: none !important;
+}
+.react-calendar__navigation button {
+  font-size: 1.6rem;
+}
+.react-calendar__tile {
+  padding: 15px 6px !important;
+}
+
+/* Progressbar grow animation */
+.progress-grow {
+  animation: growlong 2s linear;
+}
+@keyframes growlong {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: auto !important;
+  }
+}
+
+/* // swiper pagination */
+.foodapp {
+  .swiper-pagination-bullet {
+    @apply bg-primary;
+    width: 12px;
+    height: 12px;
+    transition-duration: 400ms;
+    cursor: pointer;
+    opacity: 0.4;
+  }
+  .swiper-pagination-bullet-active {
+    @apply bg-primary;
+    opacity: 1;
+    width: 28px;
+    border-radius: 10px;
+  }
+}
+
+/* // inbox table */
+.inbox-table tr:first-child {
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.scrollbar-hidden {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+input[type='time']::-webkit-calendar-picker-indicator {
+  background: none;
+  display: none;
+}
+/* // video news border */
+.video-news {
+  &:nth-child(7) {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+/* // rounded table */
+.rounded-table {
+  td:first-child {
+    -moz-border-radius: 10px 0 0 10px;
+    -webkit-border-radius: 10px 0 0 10px;
+    border-radius: 10px 0 0 10px;
+  }
+  td:last-child {
+    -moz-border-radius: 0 10px 10px 0;
+    -webkit-border-radius: 0 10px 10px 0;
+    border-radius: 0 10px 10px 0;
+  }
+}
+
+/* // quill editor */
+.ql-editor {
+  min-height: 120px;
+  @apply bg-primary/5;
+  border-radius: 0 0 16px 16px;
+}
+
+.ql-toolbar {
+  border-radius: 16px 16px 0 0;
+  border-color: #ebecef !important;
+}
+
+.ql-container.ql-snow {
+  border-radius: 0 0 16px 16px;
+  border-color: #ebecef !important;
+}
+
+.apexcharts-bar-area:hover {
+  fill: rgb(32, 183, 87) !important;
+}
+
+/* // Loader */
+.loader {
+  svg {
+    width: 3.25em;
+    transform-origin: center;
+    animation: rotate4 2s linear infinite;
+  }
+
+  circle {
+    fill: none;
+    stroke: #20b757;
+    stroke-width: 3;
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+    stroke-linecap: round;
+    animation: dash4 1s ease-in-out infinite;
+  }
+
+  @keyframes rotate4 {
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes dash4 {
+    0% {
+      stroke-dasharray: 1, 200;
+      stroke-dashoffset: 0;
+    }
+
+    50% {
+      stroke-dasharray: 90, 200;
+      stroke-dashoffset: -35px;
+    }
+
+    100% {
+      stroke-dashoffset: -125px;
+    }
+  }
+}
+
+.deposit-balance {
+  .apexcharts-legend {
+    @apply bg-primary/5;
+    width: 127px !important;
+    height: 140px;
+  }
+}
+.dark .deposit-balance {
+  .apexcharts-legend {
+    @apply bg-primary/5;
+  }
+}
+.dark {
+  .apexchartsarea-datetime {
+    fill: #31394f;
+  }
+  .apexcharts-radialbar-area {
+    stroke: #31394f;
+  }
+  .apexcharts-radial-series path {
+    stroke: var(--color-primary);
+  }
+  .apexcharts-series.apexcharts-pie-series path {
+    stroke: #31394f !important;
+  }
+  .apexcharts-text {
+    fill: #ebecef !important;
+  }
+  .apexcharts-legend-text {
+    color: #ebecef !important;
+  }
+  .apexcharts-tooltip.apexcharts-theme-light,
+  .apexcharts-tooltip.apexcharts-theme-light .apexcharts-tooltip-title {
+    background: #404a60 !important;
+    border: #404a60 !important;
+  }
+
+  .apexcharts-gridlines-vertical .apexcharts-gridline,
+  .apexcharts-grid-borders line {
+    stroke: #404a60 !important;
+  }
+  .apexcharts-gridlines-vertical .apexcharts-gridline,
+  .apexcharts-grid-borders line {
+    stroke: #404a60;
+  }
+  .apexcharts-gridlines-horizontal line {
+    stroke: #404a60 !important;
+  }
+
+  .apexcharts-tooltip {
+    background-color: #1b232d !important;
+    border-color: #404a60 !important;
+  }
+  .apexcharts-tooltip-title {
+    border-color: #404a60 !important;
+    background-color: #1b232d !important;
+  }
+
+  .nice-select {
+    border-color: #404a60 !important;
+    &.green {
+      border-radius: 12px;
+      background-color: #14161c !important;
+    }
+  }
+  .nice-select-dropdown {
+    background-color: #1d1e24 !important;
+    border-color: #1d1e24 !important;
+  }
+  .nice-select .option:hover,
+  .nice-select .option.focus,
+  .nice-select .option.selected.focus {
+    background-color: var(--color-primary);
+  }
+  .qs-datepicker-container {
+    .qs-controls {
+      background-color: #14161c !important;
+      color: #fff !important;
+    }
+    background-color: #1b232d !important;
+    color: #ebecef !important;
+    border-color: #31394f !important;
+  }
+}
+
+.apexcharts-legend-text {
+  color: #232323 !important;
+}
+select.nc-select {
+  display: none;
+}
+.nice-select {
+  .current {
+    font-size: 14px;
+  }
+  &.green {
+    border-radius: 12px;
+    background-color: var(--color-primary/5);
+  }
+  &:focus {
+    border-color: #e0e3e6 !important;
+  }
+  &.full {
+    @apply flex h-11 w-full items-center rounded-4xl bg-secondary/5 py-2.5  md:px-5 md:py-3 xl:px-5;
+  }
+  .nice-select-dropdown {
+    min-width: max-content;
+    right: 0 !important;
+  }
+  .list {
+    .option {
+      &:hover {
+        @apply bg-primary/5;
+      }
+    }
+    &.focus {
+      @apply bg-primary/5;
+    }
+    &.focus.selected {
+      @apply bg-primary/5;
+    }
+  }
+  &.card {
+    @apply ltr:mr-4 rtl:ml-4;
+    border-radius: 30px !important;
+    background-color: white !important;
+  }
+}
+.nice-select {
+  &::after {
+    right: 12px !important;
+    height: 8px;
+    width: 8px;
+  }
+}
+html[dir='rtl'] .nice-select {
+  text-align: right !important;
+  @apply pl-8 pr-4;
+  &::after {
+    left: 12px !important;
+    right: auto !important;
+  }
+  .option {
+    text-align: right;
+  }
+}
+.modal {
+  .nc-select {
+    @apply h-[50px];
+  }
+}
+
+/* // datatalbes */
+.datatable-top {
+  display: none;
+}
+.datatable-container {
+  thead {
+    tr {
+      @apply bg-secondary/5;
+      th {
+        @apply py-5;
+      }
+    }
+  }
+}
+.datatable-bottom {
+  margin-top: 16px;
+  .datatable-pagination {
+    .datatable-pagination-list {
+      @apply flex flex-wrap items-center gap-2 md:gap-3 md:font-semibold;
+      .datatable-pagination-list-item {
+        @apply flex h-8 w-8 items-center justify-center rounded-full border border-primary text-primary duration-300 hover:bg-primary hover:text-n0 md:h-10 md:w-10;
+        .datatable-pagination-list-item-link {
+          @apply bg-transparent;
+          &:hover {
+            @apply bg-transparent;
+          }
+        }
+        &.datatable-active {
+          @apply bg-primary text-white;
+          .datatable-pagination-list-item-link {
+            @apply bg-transparent;
+            &:hover {
+              @apply bg-transparent;
+            }
+          }
+        }
+        &.datatable-hidden {
+          @apply visible;
+        }
+      }
+    }
+  }
+}
+.datatable-wrapper .datatable-container {
+  border-top: none !important;
+  border-bottom: none;
+}
+.datatable-wrapper .datatable-table {
+  border: none !important;
+}
+
+input#date,
+input#date2 {
+  @apply w-full rounded-3xl border border-n30 bg-transparent  xl:px-5;
+}
