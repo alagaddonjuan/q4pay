@@ -4,7 +4,6 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
 
 class SmartRoutingService 
 {
@@ -18,10 +17,10 @@ class SmartRoutingService
         $health = Cache::get('q4i_system_health', ['status' => 'green']);
 
         if ($health['status'] === 'green') {
-            return $this->routeToTechvibes($merchant, $phone, $accountNumber, $amount);
+            return $this->routeToNinePsbAirtime($phone, $accountNumber, $amount);
         } 
         
-        Log::warning("Techvibes degraded. Rerouting NGN {$amount} airtime for {$phone} to Backup Provider.");
+        Log::warning("9PSB degraded. Rerouting NGN {$amount} airtime for {$phone} to Backup Provider.");
         return $this->routeToBackupProvider($phone, $amount);
     }
 
@@ -32,20 +31,8 @@ class SmartRoutingService
      */
     public function getDataPlans($merchant, $phone)
     {
-        $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
-
-        $response = Http::withoutVerifying()
-            ->timeout(30)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-                'token' => $activeToken 
-            ])
-            ->post('https://techvibs.com/vas9/data_external_fintech_token.php', [
-                'action' => 'get_data_plans',
-                'phone' => $phone
-            ]);
-
-        return $response->json();
+        $vas = new NinePsbVasService();
+        return $vas->getDataPlans($phone);
     }
 
     public function processDataPurchase($merchant, $phone, $accountNumber, $amount, $network, $productId) 
@@ -53,27 +40,13 @@ class SmartRoutingService
         $health = Cache::get('q4i_system_health', ['status' => 'green']);
 
         if ($health['status'] === 'green') {
-            $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
-
-            $response = Http::withoutVerifying()
-                ->timeout(30)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'token' => $activeToken 
-                ])
-                ->post('https://techvibs.com/vas9/data_external_fintech_token.php', [
-                    'action' => 'purchase_data',
-                    'phone' => $phone,
-                    'account_number' => $accountNumber,
-                    'amount' => (int) $amount,
-                    'network' => $network,
-                    'product_id' => $productId
-                ]);
-
-            return $response->json();
+            $vas = new NinePsbVasService();
+            $txnReference = 'Q4I_DATA_' . time() . rand(100, 999);
+            
+            return $vas->purchaseData($phone, $network, $amount, $productId, $accountNumber, $txnReference);
         } 
         
-        Log::warning("Techvibes degraded. Data purchase for {$phone} failed over.");
+        Log::warning("9PSB degraded. Data purchase for {$phone} failed over.");
         return ['success' => false, 'message' => 'Bank network is currently unreachable.'];
     }
 
@@ -86,64 +59,38 @@ class SmartRoutingService
     // 1. Get List of Betting Providers (SportyBet, Bet9ja, etc.)
     public function getBettingBillers($merchant)
     {
-        $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
-
-        $response = Http::withoutVerifying()
-            ->timeout(30)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-                'Fintech-Token' => $activeToken // Betting uses Fintech-Token
-            ])
-            ->post('https://techvibs.com/vas9/bills_betting_FintechToken.php', [
-                'action' => 'get_billers'
-            ]);
-
-        return $response->json();
+        $vas = new NinePsbVasService();
+        // Assuming Betting category ID is 4 based on typical 9PSB configs. 
+        // This might need mapping if the category ID differs.
+        return $vas->getCategoryBillers(4); 
     }
 
     // 2. Validate the Betting Wallet (Returns Name & Session Hash)
     public function validateBettingWallet($merchant, $accountNumber, $walletId, $billerId, $amount)
     {
-        $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
-
-        $response = Http::withoutVerifying()
-            ->timeout(30)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-                'Fintech-Token' => $activeToken
-            ])
-            ->post('https://techvibs.com/vas9/bills_betting_FintechToken.php', [
-                'action' => 'validate_wallet',
-                'account_number' => $accountNumber,
-                'wallet_id' => $walletId,
-                'biller_id' => $billerId,
-                'amount' => (int) $amount
-            ]);
-
-        return $response->json();
+        $vas = new NinePsbVasService();
+        return $vas->validateBiller($walletId, $billerId, null, $amount);
     }
 
     // 3. Purchase / Fund the Wallet
     public function processBettingFunding($merchant, $accountNumber, $walletId, $billerId, $amount, $otherField, $customerPhone = '08000000000')
     {
-        $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
+        $vas = new NinePsbVasService();
+        $txnReference = 'Q4I_BET_' . time() . rand(100, 999);
+        
+        $payload = [
+            'customerId' => $walletId,
+            'billerId' => $billerId,
+            'itemId' => '', // Betting usually doesn't have an item id
+            'customerPhone' => $customerPhone,
+            'customerName' => 'Betting Customer',
+            'otherField' => $otherField,
+            'debitAccount' => $accountNumber,
+            'amount' => $amount,
+            'transactionReference' => $txnReference
+        ];
 
-        $response = Http::withoutVerifying()
-            ->timeout(45)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-                'Fintech-Token' => $activeToken
-            ])
-            ->post('https://techvibs.com/vas9/bills_betting_FintechToken.php', [
-                'account_number' => $accountNumber,
-                'wallet_id' => $walletId,
-                'biller_id' => $billerId,
-                'amount' => (int) $amount,
-                'other_field' => $otherField,
-                'customer_phone' => $customerPhone
-            ]);
-
-        return $response->json();
+        return $vas->payBill($payload);
     }
 
     /**
@@ -151,23 +98,17 @@ class SmartRoutingService
      * INTERNAL GATEWAY ROUTING METHODS
      * ========================================================================
      */
-    private function routeToTechvibes($merchant, $phone, $accountNumber, $amount)
+    private function routeToNinePsbAirtime($phone, $accountNumber, $amount)
     {
-        $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
+        $vas = new NinePsbVasService();
+        
+        // 1. Fetch Network first
+        $networkInfo = $vas->getNetwork($phone);
+        $networkName = $networkInfo['network'] ?? 'MTN'; // Fallback
+        
+        $txnReference = 'Q4I_AIR_' . time() . rand(100, 999);
 
-        $response = Http::withoutVerifying()
-            ->timeout(30)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-                'token' => $activeToken 
-            ])
-            ->post('https://techvibs.com/vas9/airtime_external_fintech_token.php', [
-                'phone' => $phone,
-                'account_number' => $accountNumber,
-                'amount' => $amount
-            ]);
-
-        return $response->json();
+        return $vas->purchaseAirtime($phone, $networkName, $amount, $accountNumber, $txnReference);
     }
 
     private function routeToBackupProvider($phone, $amount)
@@ -185,71 +126,45 @@ class SmartRoutingService
 
     /**
      * ========================================================================
-     * ELECTRICITY LOGIC (From Allen's Docs)
+     * ELECTRICITY LOGIC
      * ========================================================================
      */
 
     // 1. Get List of Electricity Providers (Discos)
     public function getElectricityBillers($merchant)
     {
-        $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
-
-        $response = Http::withoutVerifying()
-            ->timeout(30)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-                'Fintech-Token' => $activeToken
-            ])
-            ->post('https://techvibs.com/vas9/bill_electricity_fintechToken.php', [
-                'action' => 'get_billers'
-            ]);
-
-        return $response->json();
+        $vas = new NinePsbVasService();
+        // Assuming Electricity category ID is 3
+        return $vas->getCategoryBillers(3);
     }
 
     // 2. Validate the Meter Number
     public function validateMeter($merchant, $accountNumber, $meterNumber, $billerId, $meterType, $amount = 5000)
     {
-        $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
-
-        $response = Http::withoutVerifying()
-            ->timeout(30)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-                'Fintech-Token' => $activeToken
-            ])
-            ->post('https://techvibs.com/vas9/bill_electricity_fintechToken.php', [
-                'action' => 'validate_meter',
-                'account_number' => $accountNumber,
-                'meter_number' => $meterNumber,
-                'biller_id' => $billerId,
-                'meter_type' => $meterType,
-                'amount' => (int) $amount // This will now send 5000!
-            ]);
-
-        return $response->json();
+        $vas = new NinePsbVasService();
+        // Techvibes used $meterType, but 9PSB uses $itemId for prepaid/postpaid
+        // We'll map $meterType to $itemId
+        return $vas->validateBiller($meterNumber, $billerId, $meterType, $amount);
     }
 
     // 3. Purchase Electricity (Vend Token)
     public function processElectricityPurchase($merchant, $accountNumber, $meterNumber, $billerId, $meterType, $amount, $customerPhone = '08000000000')
     {
-        $activeToken = $merchant->techvibes_token ?: env('TECHVIBES_LIVE_TOKEN');
+        $vas = new NinePsbVasService();
+        $txnReference = 'Q4I_ELEC_' . time() . rand(100, 999);
+        
+        $payload = [
+            'customerId' => $meterNumber,
+            'billerId' => $billerId,
+            'itemId' => $meterType, 
+            'customerPhone' => $customerPhone,
+            'customerName' => 'Electricity Customer',
+            'otherField' => '',
+            'debitAccount' => $accountNumber,
+            'amount' => $amount,
+            'transactionReference' => $txnReference
+        ];
 
-        $response = Http::withoutVerifying()
-            ->timeout(45)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-                'Fintech-Token' => $activeToken
-            ])
-            ->post('https://techvibs.com/vas9/bill_electricity_fintechToken.php', [
-                'account_number' => $accountNumber,
-                'meter_number' => $meterNumber,
-                'biller_id' => $billerId,
-                'meter_type' => $meterType,
-                'amount' => (int) $amount,
-                'customer_phone' => $customerPhone
-            ]);
-
-        return $response->json();
+        return $vas->payBill($payload);
     }
 }

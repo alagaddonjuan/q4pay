@@ -769,38 +769,30 @@ class TechvibesController extends Controller
         // 4. Generate Unique Transaction Reference
         $txnReference = 'Q4I_OUT_' . time() . rand(100, 999);
 
-        // 5. Prepare Techvibes Payload
+        // 5. Prepare 9PSB Transfer Payload
         $payload = [
-            "transactionReference" => $txnReference,
-            "sourceAccountNumber" => $sourceAccount->account_number,
-            "destinationAccountNumber" => $validated['destination_account'],
-            "destinationBankCode" => $validated['destination_bank_code'],
-            "destinationAccountName" => $validated['destination_account_name'],
-            "amount" => $withdrawalAmount,
-            "currency" => "NGN",
-            "narration" => $validated['narration'] ?? "Q4I Settlement",
-            "description" => "Merchant Payout"
+            'bank_code' => $validated['destination_bank_code'],
+            'account_number' => $validated['destination_account'],
+            'account_name' => $validated['destination_account_name'],
+            'amount' => $withdrawalAmount,
+            'reference' => $txnReference,
+            'narration' => $validated['narration'] ?? "Q4I Settlement"
         ];
 
-        \Illuminate\Support\Facades\Log::info('Initiating Techvibes Payout:', $payload);
+        \Illuminate\Support\Facades\Log::info('Initiating 9PSB Payout:', $payload);
 
         // 6. Lock the transaction to prevent race conditions (Double-spending)
         \Illuminate\Support\Facades\DB::beginTransaction();
 
         try {
             // 7. Fire the API Call
-            $response = \Illuminate\Support\Facades\Http::withoutVerifying()
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . env('TECHVIBES_BEARER_TOKEN'), // Ensure this is the Fintech Token
-                    'Content-Type' => 'application/json'
-                ])->post('https://techvibs.com/waas9/WAAS9Transfer_DefaultDeterminedbyCLient.php', $payload);
+            $transferService = new \App\Services\NinePsbTransferService();
+            $responseData = $transferService->transferToOtherBank($payload);
 
-            $responseData = $response->json();
-            \Illuminate\Support\Facades\Log::info('Techvibes Payout Response:', $responseData);
+            \Illuminate\Support\Facades\Log::info('9PSB Payout Response:', $responseData);
 
             // 8. Handle API Response
-            // Techvibes usually returns a 'status' or 'responseCode' for transfers. Adjust this check based on their actual success flag.
-            if ($response->successful() && isset($responseData['status']) && strtolower($responseData['status']) === 'success') {
+            if (isset($responseData['status']) && strtolower($responseData['status']) === 'success') {
                 
                 $balanceBefore = $merchant->wallet_balance;
                 $balanceAfter = $balanceBefore - $totalDeduction;

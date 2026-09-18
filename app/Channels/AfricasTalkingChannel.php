@@ -29,7 +29,7 @@ class AfricasTalkingChannel
         }
 
         try {
-            $username = env('AFRICASTALKING_USERNAME', 'sandbox');
+            $username = env('AFRICASTALKING_USERNAME', '');
             $apiKey   = env('AFRICASTALKING_API_KEY');
             
             if (!$apiKey) {

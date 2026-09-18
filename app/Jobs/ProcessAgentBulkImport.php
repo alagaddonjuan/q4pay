@@ -95,21 +95,17 @@ class ProcessAgentBulkImport implements ShouldQueue
                         'updated_at' => now(),
                     ]);
 
-                    // 2. Call Techvibes to provision the 9PSB Virtual Account
-                    $response = Http::withoutVerifying()
-                        ->timeout(15)
-                        ->withToken(env('TECHVIBES_BEARER_TOKEN'))
-                        ->post('https://techvibs.com/9psb/virtual_account_byFintechToken.php', [
-                            'type' => 'STATIC',
-                            'customer_name' => $firstName . ' ' . $lastName,
-                            'description' => 'Sub-Agent Collection Account',
-                            'amount' => 0,            
-                            'amounttype' => 'ANY'     
-                        ]);
+                    // 2. Call 9PSB to provision the Virtual Account
+                    $txnReference = 'Q4I_BULK_' . time() . rand(100, 999);
+                    
+                    $virtualAccountService = new \App\Services\NinePsbVirtualAccountService();
+                    $apiData = $virtualAccountService->createVirtualAccount([
+                        "transaction" => ["reference" => $txnReference],
+                        "order" => ["amount" => 0, "currency" => "NGN", "description" => "Sub-Agent Collection Account", "country" => "NGA", "amounttype" => "ANY"],
+                        "customer" => ["account" => ["name" => $firstName . ' ' . $lastName, "type" => "STATIC"]]
+                    ]);
 
-                    $apiData = $response->json();
-
-                    if (!$response->successful() || ($apiData['status'] ?? '') !== 'success') {
+                    if (!isset($apiData['message']) || strtolower($apiData['message']) !== 'success' || !isset($apiData['customer']['account']['number'])) {
                         throw new \Exception("Banking API rejected account creation for {$phone}. " . ($apiData['message'] ?? ''));
                     }
 
@@ -119,10 +115,10 @@ class ProcessAgentBulkImport implements ShouldQueue
                     DB::table('virtual_accounts')->insert([
                         'user_id' => $userId,
                         'agent_id' => $agentId,
-                        'account_number' => $apiData['account_number'], 
+                        'account_number' => $apiData['customer']['account']['number'], 
                         'bank_name' => '9PSB',
-                        'customer_id' => $apiData['techvibes_id'],      
-                        'order_ref' => $apiData['reference'],           
+                        'customer_id' => $apiData['customer']['id'] ?? null,      
+                        'order_ref' => $txnReference,           
                         'ledger_balance' => 0.00,
                         'is_active' => true,
                         'created_at' => now(),
@@ -132,7 +128,7 @@ class ProcessAgentBulkImport implements ShouldQueue
 
                 $successCount++;
                 
-                // Rate Limiting: Sleep for 0.5 seconds between API calls to prevent Techvibes from banning your server IP
+                // Rate Limiting: Sleep for 0.5 seconds between API calls to prevent 9PSB from banning your server IP
                 usleep(500000); 
 
             } catch (\Exception $e) {

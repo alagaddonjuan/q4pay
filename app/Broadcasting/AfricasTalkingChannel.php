@@ -39,7 +39,7 @@ class AfricasTalkingChannel
         }
 
         // Initialize Africa's Talking SDK
-        $username = env('AFRICASTALKING_USERNAME', 'sandbox'); // use 'sandbox' for development in the test environment
+        $username = env('AFRICASTALKING_USERNAME', ''); // use '' for development in the test environment
         $apiKey   = env('AFRICASTALKING_API_KEY');
 
         if (empty($apiKey)) {

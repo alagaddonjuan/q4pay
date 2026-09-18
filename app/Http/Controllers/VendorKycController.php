@@ -56,34 +56,27 @@ class VendorKycController extends Controller
         $otherNames = implode(' ', $nameParts) ?: 'Vendor';
 
         // ==========================================
-        // 2. GENERATE 9PSB VIRTUAL ACCOUNT VIA TECHVIBS
+        // 2. GENERATE 9PSB VIRTUAL ACCOUNT
         // ==========================================
+        $txnReference = 'Q4I_VENDOR_' . time() . rand(100, 999);
+
         $payload = [
-            'bvn' => $request->bvn,
-            'dateOfBirth' => $dob,
-            'lastName' => $lastName,
-            'otherNames' => $otherNames,
-            'phoneNo' => $phone,
-            'gender' => 0 // Defaulting to 0 as per your previous controller
+            "transaction" => ["reference" => $txnReference],
+            "order" => ["amount" => 0, "currency" => "NGN", "description" => "Vendor Virtual Account", "country" => "NGA", "amounttype" => "ANY"],
+            "customer" => ["account" => ["name" => $officialName, "type" => "STATIC"]]
         ];
 
         try {
-            // Using your master Fintech Token
-            $response = Http::withoutVerifying()
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . env('TECHVIBES_API_TOKEN', env('TECHVIBES_LIVE_TOKEN')),
-                    'Content-Type' => 'application/json'
-                ])->post('https://techvibs.com/bank/api_general/bvn_verification_token_api.php', $payload);
+            $virtualAccountService = new \App\Services\NinePsbVirtualAccountService();
+            $responseData = $virtualAccountService->createVirtualAccount($payload);
 
-            $responseData = $response->json();
-
-            if (!$response->successful() || !isset($responseData['status']) || $responseData['status'] !== 'success') {
-                Log::error('Techvibs Vendor VA Creation Failed', ['response' => $responseData]);
+            if (!isset($responseData['message']) || strtolower($responseData['message']) !== 'success' || !isset($responseData['customer']['account']['number'])) {
+                Log::error('9PSB Vendor VA Creation Failed', ['response' => $responseData]);
                 return back()->withErrors(['error' => 'Identity verified, but banking provider failed to generate account. Please try again.']);
             }
 
-            // Extract the new Account details from Allen's API
-            $accountNumber = $responseData['api_response']['accountNumber'];
+            // Extract the new Account details from 9PSB's API
+            $accountNumber = $responseData['customer']['account']['number'];
             $bankName = '9PSB';
 
             // ==========================================

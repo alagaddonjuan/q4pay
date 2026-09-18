@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Hash;
 class UtilityController extends Controller
 {
     /**
-     * Helper to calculate wholesale commission on utilities (if Techvibs offers it)
+     * Helper to calculate wholesale commission on utilities (if 9PSB offers it)
      * e.g., 1.5% commission on electricity purchases.
      */
     private function calculateUtilityProfit($amount)
@@ -58,7 +58,7 @@ class UtilityController extends Controller
                 5000 // Test amount for validation
             );
 
-            Log::info('Techvibes Power Verify:', (array)$apiResult);
+            Log::info('9PSB Power Verify:', (array)$apiResult);
 
             if (isset($apiResult['success']) && $apiResult['success'] === true) {
                 return response()->json([
@@ -103,8 +103,8 @@ class UtilityController extends Controller
         // ==========================================
         $purchaseAmount = $validated['amount'];
         $q4iConvenienceFee = 100; // Flat fee charged to merchant
-        $techvibsCommission = $this->calculateUtilityProfit($purchaseAmount); // Wholesale discount
-        $totalProfit = $q4iConvenienceFee + $techvibsCommission; // Total earnings for Q4I
+        $ninePsbCommission = $this->calculateUtilityProfit($purchaseAmount); // Wholesale discount
+        $totalProfit = $q4iConvenienceFee + $ninePsbCommission; // Total earnings for Q4I
         
         $totalDeduction = $purchaseAmount + $q4iConvenienceFee;
 

@@ -2,25 +2,25 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
-
 class TvSubscriptionService
 {
     public function processSubscription($sourceAccount, $smartcardNumber, $amount, $billerId, $packageCode, $customerPhone = null)
     {
-        // Added ->withoutVerifying() to bypass local Laragon SSL issues
-        $response = Http::withoutVerifying()->withHeaders([
-            'Content-Type' => 'application/json',
-            'fintech-token' => env('TECHVIBS_FINTECH_TOKEN'),
-        ])->post('https://techvibs.com/bank/api_general/bill_tv_subscription_Route_byFintechToken_api.php', [
-            'source_account' => $sourceAccount,
-            'smartcard_number' => $smartcardNumber,
+        $vas = new NinePsbVasService();
+        $txnReference = 'Q4I_TV_' . time() . rand(100, 999);
+        
+        $payload = [
+            'customerId' => $smartcardNumber,
+            'billerId' => $billerId,
+            'itemId' => $packageCode,
+            'customerPhone' => $customerPhone ?? '08000000000',
+            'customerName' => 'TV Customer',
+            'otherField' => '',
+            'debitAccount' => $sourceAccount,
             'amount' => $amount,
-            'biller_id' => $billerId,
-            'package_code' => $packageCode,
-            'customer_phone' => $customerPhone,
-        ]);
+            'transactionReference' => $txnReference
+        ];
 
-        return $response->json();
+        return $vas->payBill($payload);
     }
 }

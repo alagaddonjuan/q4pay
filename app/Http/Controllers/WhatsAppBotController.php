@@ -190,33 +190,24 @@ class WhatsAppBotController extends Controller
                     'store_name' => 'WhatsApp Store'
                 ]);
 
-                $techvibesPayload = [
-                    'bvn' => $bvn,
-                    'phoneNo' => $phone,
-                    'lastName' => 'Vendor',       
-                    'otherNames' => 'WhatsApp',   
-                    'dateOfBirth' => '1990-01-01', 
-                    'gender' => 0                 
-                ];
+                $txnReference = 'Q4I_WA_' . time() . rand(100, 999);
+                $virtualAccountService = new \App\Services\NinePsbVirtualAccountService();
+                $responseData = $virtualAccountService->createVirtualAccount([
+                    "transaction" => ["reference" => $txnReference],
+                    "order" => ["amount" => 0, "currency" => "NGN", "description" => "WhatsApp Vendor Virtual Account", "country" => "NGA", "amounttype" => "ANY"],
+                    "customer" => ["account" => ["name" => "WhatsApp Vendor", "type" => "STATIC"]]
+                ]);
 
-                $response = Http::withoutVerifying()
-                    ->withHeaders([
-                        'Authorization' => 'Bearer ' . env('TECHVIBES_API_TOKEN'),
-                        'Content-Type' => 'application/json'
-                    ])->post('https://techvibs.com/bank/api_general/bvn_verification_token_api.php', $techvibesPayload);
-
-                $responseData = $response->json();
-
-                if ($response->successful() && isset($responseData['status']) && $responseData['status'] === 'success') {
+                if (isset($responseData['message']) && strtolower($responseData['message']) === 'success' && isset($responseData['customer']['account']['number'])) {
                     
-                    $accountNumber = $responseData['api_response']['accountNumber'];
+                    $accountNumber = $responseData['customer']['account']['number'];
                     
                     VirtualAccount::create([
                         'user_id' => $user->id, 
                         'account_number' => $accountNumber,
                         'bank_name' => '9PSB',
-                        'customer_id' => $responseData['api_response']['customerID'],
-                        'order_ref' => $responseData['api_response']['orderRef'] ?? 'WA_' . time(),
+                        'customer_id' => $responseData['customer']['id'] ?? null,
+                        'order_ref' => $txnReference,
                     ]);
 
                     Cache::forget("wa_state_{$phone}");
@@ -226,7 +217,7 @@ class WhatsAppBotController extends Controller
                     $this->sendWhatsAppMessage($phone, $reply);
                     return;
                 } else {
-                    Log::error('Techvibes Bot Account Creation Failed', ['response' => $responseData]);
+                    Log::error('9PSB Bot Account Creation Failed', ['response' => $responseData]);
                     $user->delete();
                     Cache::forget("wa_state_{$phone}");
                     Cache::forget("wa_bvn_{$phone}");

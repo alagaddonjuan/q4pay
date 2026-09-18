@@ -420,7 +420,15 @@ class MerchantDashboardController extends Controller
             'phone' => 'required|string|max:15',
         ]);
 
-        $account = DB::table('virtual_accounts')->where('id', $id)->first();
+        $merchant = \App\Models\Merchant::current();
+        $account = DB::table('virtual_accounts')
+            ->join('agents', 'virtual_accounts.agent_id', '=', 'agents.id')
+            ->where('virtual_accounts.id', $id)
+            ->where('agents.merchant_id', $merchant->id)
+            ->select('virtual_accounts.*')
+            ->first();
+
+        if (!$account) return back()->withErrors(['error' => 'Account not found.']);
         
         DB::table('agents')->where('id', $account->agent_id)->update([
             'email' => $request->email,
@@ -441,7 +449,14 @@ class MerchantDashboardController extends Controller
 
         DB::transaction(function () use ($id, $amount, $merchant) {
             
-            $account = DB::table('virtual_accounts')->where('id', $id)->first();
+            $account = DB::table('virtual_accounts')
+                ->join('agents', 'virtual_accounts.agent_id', '=', 'agents.id')
+                ->where('virtual_accounts.id', $id)
+                ->where('agents.merchant_id', $merchant->id)
+                ->select('virtual_accounts.*')
+                ->first();
+
+            if (!$account) throw new \Exception("Account not found");
             
             $balanceBefore = $account->ledger_balance;
             $balanceAfter = $balanceBefore + $amount;
@@ -482,7 +497,15 @@ class MerchantDashboardController extends Controller
     // ========================================================================
     public function exportStatement($id)
     {
-        $account = DB::table('virtual_accounts')->where('id', $id)->first();
+        $merchant = \App\Models\Merchant::current();
+        $account = DB::table('virtual_accounts')
+            ->join('agents', 'virtual_accounts.agent_id', '=', 'agents.id')
+            ->where('virtual_accounts.id', $id)
+            ->where('agents.merchant_id', $merchant->id)
+            ->select('virtual_accounts.*')
+            ->first();
+        if (!$account) return back()->withErrors(['error' => 'Account not found.']);
+
         $transactions = DB::table('transactions')->where('virtual_account_id', $id)->orderBy('created_at', 'desc')->get();
 
         $headers = [
@@ -1197,7 +1220,13 @@ class MerchantDashboardController extends Controller
     // ========================================================================
     public function mockVirtualAccountTransaction($id)
     {
-        $account = DB::table('virtual_accounts')->where('id', $id)->first();
+        $merchant = \App\Models\Merchant::current();
+        $account = DB::table('virtual_accounts')
+            ->join('agents', 'virtual_accounts.agent_id', '=', 'agents.id')
+            ->where('virtual_accounts.id', $id)
+            ->where('agents.merchant_id', $merchant->id)
+            ->select('virtual_accounts.*')
+            ->first();
         if (!$account) return back()->withErrors(['error' => 'Account not found.']);
 
         $amount = rand(5000, 50000); 
@@ -1224,6 +1253,15 @@ class MerchantDashboardController extends Controller
     // ========================================================================
     public function exportVirtualAccountStatement($id)
     {
+        $merchant = \App\Models\Merchant::current();
+        $account = DB::table('virtual_accounts')
+            ->join('agents', 'virtual_accounts.agent_id', '=', 'agents.id')
+            ->where('virtual_accounts.id', $id)
+            ->where('agents.merchant_id', $merchant->id)
+            ->select('virtual_accounts.*')
+            ->first();
+        if (!$account) return back()->withErrors(['error' => 'Account not found.']);
+
         $transactions = DB::table('transactions')
             ->where('virtual_account_id', $id)
             ->orderBy('created_at', 'desc')
@@ -1268,7 +1306,13 @@ class MerchantDashboardController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
-        $account = DB::table('virtual_accounts')->where('id', $id)->first();
+        $merchant = \App\Models\Merchant::current();
+        $account = DB::table('virtual_accounts')
+            ->join('agents', 'virtual_accounts.agent_id', '=', 'agents.id')
+            ->where('virtual_accounts.id', $id)
+            ->where('agents.merchant_id', $merchant->id)
+            ->select('virtual_accounts.*')
+            ->first();
         if (!$account) return back()->withErrors(['error' => 'Account not found.']);
 
         DB::table('agents')->where('id', $account->agent_id)->update([

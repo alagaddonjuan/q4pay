@@ -41,37 +41,23 @@ class SweepPlatformProfits extends Command
 
         $txnRef = 'Q4I-SWEEP-' . time();
 
-        // 3. Fire the outward transfer using your Master Techvibes Token
+        // 3. Fire the outward transfer using 9PSB
         try {
             // Note: In production, add these variables to your .env file!
-            $corporateAccount = env('Q4I_CORPORATE_ACCOUNT_NUMBER', '0123456789'); // Your actual GTB/Moniepoint number
-            $corporateBankCode = env('Q4I_CORPORATE_BANK_CODE', '058'); // Your actual Bank Code
-            $masterToken = env('TECHVIBES_LIVE_TOKEN');
+            $corporateAccount = env('Q4I_CORPORATE_ACCOUNT_NUMBER'); // Your actual GTB/Moniepoint number
+            $corporateBankCode = env('Q4I_CORPORATE_BANK_CODE'); // Your actual Bank Code
 
-            $response = Http::withoutVerifying()
-                ->timeout(30)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer ' . $masterToken
-                ])
-                ->post('https://techvibs.com/waas9/transfer_external_fintech_token.php', [
-                    'token' => $masterToken,
-                    'transactionReference' => $txnRef,
-                    // Q4I's master virtual account number at Techvibes (Where the pool sits)
-                    'sourceAccountNumber' => env('Q4I_MASTER_VIRTUAL_ACCOUNT', 'YOUR_MASTER_ACCOUNT'), 
-                    'destinationAccountNumber' => $corporateAccount,
-                    'destinationBankCode' => $corporateBankCode,
-                    'destinationAccountName' => 'Q4I LIMITED',
-                    'senderName' => 'Q4I Auto-Sweep',
-                    'amount' => $totalProfit,
-                    'currency' => 'NGN',
-                    'narration' => 'Daily Platform Revenue Sweep',
-                    'description' => 'Profit Extraction'
-                ]);
+            $transferService = new \App\Services\NinePsbTransferService();
+            $apiResult = $transferService->transferToOtherBank([
+                'bank_code' => $corporateBankCode,
+                'account_number' => $corporateAccount,
+                'account_name' => 'Q4I LIMITED',
+                'amount' => $totalProfit,
+                'reference' => $txnRef,
+                'narration' => 'Daily Platform Revenue Sweep'
+            ]);
 
-            $apiResult = $response->json();
-
-            if ($response->successful() && isset($apiResult['success']) && $apiResult['success'] === true) {
+            if (isset($apiResult['status']) && strtolower($apiResult['status']) === 'success') {
                 // 4. Mark all those transactions as successfully swept!
                 DB::beginTransaction();
                 try {
@@ -86,7 +72,7 @@ class SweepPlatformProfits extends Command
                     Log::error('Sweep failed to update database: ' . $e->getMessage());
                 }
             } else {
-                $this->error('Techvibes Transfer Failed: ' . json_encode($apiResult));
+                $this->error('9PSB Transfer Failed: ' . json_encode($apiResult));
                 Log::error('EOD Sweep Failed at Bank Level: ' . json_encode($apiResult));
             }
 

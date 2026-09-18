@@ -50,7 +50,7 @@
                             <i class="{{ $insight['icon'] }} text-3xl {{ $iconColor }}"></i>
                         </div>
                         <div class="{{ $textColor }} text-sm pt-1 leading-relaxed">
-                            {!! \Illuminate\Support\Str::markdown($insight['message']) !!}
+                            {!! \Illuminate\Support\Str::markdown(e($insight['message'])) !!}
                         </div>
                     </div>
                     

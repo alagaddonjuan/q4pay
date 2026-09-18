@@ -50,10 +50,10 @@ class WebhookController extends Controller
     }
 
     // ==========================================
-    // 2. TECHVIBES RECEIVER (INBOUND MONEY)
+    // 2. 9PSB RECEIVER (INBOUND MONEY)
     // ==========================================
 
-    public function handleTechvibesWebhook(Request $request)
+    public function handleNinePsbWebhook(Request $request)
     {
         Log::channel('single')->info('WEBHOOK RECEIVED', $request->all());
 

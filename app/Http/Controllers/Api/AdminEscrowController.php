@@ -20,7 +20,7 @@ class AdminEscrowController extends Controller
     private function authenticateMasterAdmin(Request $request)
     {
         $masterKey = $request->header('X-Q4I-Master-Key');
-        $validKey = env('Q4I_MASTER_KEY', 'q4i_super_admin_secret_999'); 
+        $validKey = env('Q4I_MASTER_KEY', ''); 
         
         return $masterKey === $validKey;
     }

@@ -26,7 +26,7 @@ class PayoutController extends Controller
             $response = Http::withoutVerifying()->withHeaders([
                 'Content-Type' => 'application/json',
                 'token' => env('TECHVIBES_LIVE_TOKEN') 
-            ])->post('https://techvibs.com/bank/api_general/bankList_general_local_db_token_api.php', [
+            ])->post('https://baastest.9psb.com.ng/api/v1/bank', [
                 'query' => $query
             ]);
 
@@ -52,7 +52,7 @@ class PayoutController extends Controller
             $response = Http::withoutVerifying()->withHeaders([
                 'Content-Type' => 'application/json',
                 'X-Fintech-Token' => env('TECHVIBES_LIVE_TOKEN') 
-            ])->post('https://techvibs.com/waas9/validate_destination_account_external_fintech_token.php', [
+            ])->post('https://baastest.9psb.com.ng/api/v1/nameenquiry', [
                 'account_number' => $validated['account_number'],
                 'bank_code' => $validated['bank_code']
             ]);
@@ -106,8 +106,8 @@ class PayoutController extends Controller
         // ==========================================
         $payoutAmount = $validated['amount'];
         $q4iFee = 100.00; // Flat fee charged to merchant
-        $techvibsCost = 13.00; // Cost paid by Q4I to provider
-        $q4iProfit = $q4iFee - $techvibsCost; // N87 Net Profit
+        $ninePsbCost = 13.00; // Cost paid by Q4I to provider
+        $q4iProfit = $q4iFee - $ninePsbCost; // N87 Net Profit
         
         $totalDeduction = $payoutAmount + $q4iFee;
 
@@ -133,7 +133,7 @@ class PayoutController extends Controller
                 'type' => 'debit',
                 'amount' => $payoutAmount,
                 'fee_charged' => $q4iFee,
-                'bank_fee' => $techvibsCost, // Log provider cost for auditing
+                'bank_fee' => $ninePsbCost, // Log provider cost for auditing
                 'settled_amount' => $totalDeduction, 
                 'balance_before' => $account->ledger_balance + $totalDeduction,
                 'balance_after' => $account->ledger_balance,
@@ -147,49 +147,19 @@ class PayoutController extends Controller
             return response()->json(['error' => 'Internal Database Error locking funds'], 500);
         }
 
-        // 6. CALL THE TECHVIBES BANKING NETWORK
+        // 6. CALL THE 9PSB BANKING NETWORK
         try {
-            // Using your master FinTech Token to execute the transfer
-            $activeToken = env('TECHVIBES_LIVE_TOKEN'); 
+            $transferService = new \App\Services\NinePsbTransferService();
+            $payload = [
+                'bank_code' => $validated['destinationBankCode'],
+                'account_number' => $validated['destinationAccountNumber'],
+                'account_name' => $validated['destinationAccountName'],
+                'amount' => $payoutAmount,
+                'reference' => $txnRef,
+                'narration' => $validated['narration'] ?? 'Q4I Payout'
+            ];
             
-            $response = Http::withoutVerifying()
-                ->timeout(30)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Authorization' => 'Bearer ' . $activeToken
-                ])
-                ->post('https://techvibs.com/waas9/transfer_external_fintech_token.php', [
-                    'token' => $activeToken,
-                    'transactionReference' => $txnRef,
-                    'sourceAccountNumber' => $validated['sourceAccountNumber'],
-                    'destinationAccountNumber' => $validated['destinationAccountNumber'],
-                    'destinationBankCode' => $validated['destinationBankCode'],
-                    'destinationAccountName' => $validated['destinationAccountName'],
-                    'senderName' => $account->account_name ?? $merchant->business_name,
-                    'amount' => $payoutAmount,
-                    'currency' => 'NGN',
-                    'narration' => $validated['narration'] ?? 'Q4I Payout',
-                    'description' => 'Transfer payment'
-                ]);
-
-            $apiResult = $response->json();
-
-            // Check if TechVibes returned an error
-            if (!$response->successful() || (isset($apiResult['success']) && $apiResult['success'] === false)) {
-                $errorData = $apiResult['data'] ?? $apiResult;
-                $errorMessage = $errorData['error'] ?? $errorData['message'] ?? 'Unknown error from banking network';
-                
-                // Triggers your auto-reversal method
-                return $this->reverseTransaction(
-                    $transaction, 
-                    $account, 
-                    $merchant, 
-                    $totalDeduction, 
-                    $errorMessage, 
-                    $apiResult,
-                    $response->status()
-                );
-            }
+            $apiResult = $transferService->transferToOtherBank($payload);
 
             // 7. HANDLE SUCCESS RESPONSE & LOG PROFIT
             if (isset($apiResult['success']) && $apiResult['success'] === true) {
@@ -220,7 +190,7 @@ class PayoutController extends Controller
                     'message' => $apiResult['data']['message'] ?? 'Transfer processed successfully',
                     'data' => [
                         'reference' => $txnRef,
-                        'techvibes_reference' => $apiResult['data']['reference'] ?? null,
+                        'ninepsb_reference' => $apiResult['data']['reference'] ?? null,
                         'amount_sent' => $payoutAmount,
                         'platform_fee' => $q4iFee,
                         'total_deducted' => $totalDeduction,
@@ -234,7 +204,7 @@ class PayoutController extends Controller
             throw new \Exception('Unexpected response format from banking network');
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            Log::error('Techvibes Connection Timeout: ' . $e->getMessage());
+            Log::error('9PSB Connection Timeout: ' . $e->getMessage());
             return response()->json([
                 'status' => 'pending',
                 'message' => 'Transfer is processing. Network timeout occurred - please verify status later.',
@@ -243,7 +213,7 @@ class PayoutController extends Controller
             ], 202);
             
         } catch (\Exception $e) {
-            Log::error('Techvibes Transfer Exception: ' . $e->getMessage());
+            Log::error('9PSB Transfer Exception: ' . $e->getMessage());
             return $this->reverseTransaction(
                 $transaction, 
                 $account, 
@@ -471,3 +441,4 @@ class PayoutController extends Controller
         }
     }
 }
+

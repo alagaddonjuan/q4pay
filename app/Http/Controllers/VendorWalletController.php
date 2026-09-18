@@ -182,8 +182,8 @@ class VendorWalletController extends Controller
         // ==========================================
         $withdrawalAmount = $request->amount;
         $q4iFee = config('app.vendor_withdrawal_fee', 50.00);
-$techvibsCost = config('app.techvibes_withdrawal_cost', 13.00);
-        $q4iProfit = $q4iFee - $techvibsCost; // N87 Net Profit
+        $ninePsbCost = config('app.ninepsb_withdrawal_cost', 10.00);
+        $q4iProfit = $q4iFee - $ninePsbCost; // N90 Net Profit
         
         $totalDeduction = $withdrawalAmount + $q4iFee;
 
@@ -212,23 +212,21 @@ $techvibsCost = config('app.techvibes_withdrawal_cost', 13.00);
             // A. Deduct Total Amount from wallet state instantly
             DB::table('wallets')->where('id', $wallet->id)->decrement('balance', $totalDeduction);
 
-            // B. Trigger the automated live transfer via Techvibes API (SSL ENCRYPTED)
-            // Note: ->withoutVerifying() has been strictly omitted to maintain full TLS integrity.
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'Authorization' => 'Bearer ' . config('services.techvibes.token', env('TECHVIBES_API_TOKEN')),
-                'Accept'        => 'application/json',
-            ])->post(config('services.techvibes.base_url', 'https://api.techvibes.com/v1') . '/transfers', [
-                'reference'             => $txnRef,
-                'amount'                => $withdrawalAmount,
-                'destination_account'   => $bank->account_number,
-                'destination_bank_code' => $bank->bank_code,
-                'narration'             => 'Q4I Escrow Settlement ' . $txnRef,
+            // B. Trigger the automated live transfer via 9PSB API
+            $transferService = new \App\Services\NinePsbTransferService();
+            $responseData = $transferService->transferToOtherBank([
+                'bank_code' => $bank->bank_code,
+                'account_number' => $bank->account_number,
+                'account_name' => $bank->account_name,
+                'amount' => $withdrawalAmount,
+                'reference' => $txnRef,
+                'narration' => 'Q4I Escrow Settlement ' . $txnRef
             ]);
 
             // C. Inspect the API payload explicitly. If it fails or times out, throw an exception!
-            if (!$response->successful() || $response->json('status') !== 'success') {
-                $errorReason = $response->json('message') ?? 'External settlement infrastructure connection error.';
-                throw new \Exception("Techvibes Rejected Payout: " . $errorReason);
+            if (!isset($responseData['status']) || strtolower($responseData['status']) !== 'success') {
+                $errorReason = $responseData['message'] ?? 'External settlement infrastructure connection error.';
+                throw new \Exception("9PSB Rejected Payout: " . $errorReason);
             }
 
             // D. Log the withdrawal request as successful since the bank accepted the payload

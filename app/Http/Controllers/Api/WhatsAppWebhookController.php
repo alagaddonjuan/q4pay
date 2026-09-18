@@ -255,7 +255,7 @@ class WhatsAppWebhookController extends Controller
             'amount' => $product->price,
             'shipping_fee' => 0, 
             'item_description' => $product->name,
-            'virtual_account_number' => '1234567890',
+            'virtual_account_number' => '',
             'virtual_account_bank' => 'Wema Bank',
             'status' => 'awaiting_funds'
         ]);
@@ -1282,13 +1282,13 @@ class WhatsAppWebhookController extends Controller
                 ?? DB::table('merchant_bank_accounts')->where('merchant_id', $merchantId)->first();
             
             return [
-                'account_number' => $bankAccount ? $bankAccount->account_number : env('DEFAULT_ESCROW_ACCOUNT', '1234567890'),
+                'account_number' => $bankAccount ? $bankAccount->account_number : env('DEFAULT_ESCROW_ACCOUNT', ''),
                 'bank_name'      => $bankAccount ? $bankAccount->bank_name : '9PSB',
                 'account_name'   => $bankAccount ? $bankAccount->account_name : $businessName . ' Escrow'
             ];
         } catch (\Throwable $e) {
             return [
-                'account_number' => '1234567890',
+                'account_number' => '',
                 'bank_name'      => '9PSB',
                 'account_name'   => 'Q4I Master Escrow'
             ];
