@@ -139,17 +139,21 @@ class ProcessAutoSweeps extends Command
                                 'narration' => "Auto-Sweep to {$bank->bank_name} ({$bank->account_number}) from {$merchant->business_name}"
                             ]);
 
-                            if (isset($transferResponse['code']) && $transferResponse['code'] === '00') {
+                            if (isset($transferResponse['status']) && strtolower($transferResponse['status']) === 'success') {
                                 $transaction->update(['status' => 'successful']);
                                 $this->info("Sweep successful for Merchant {$merchant->id}");
                             } else {
                                 Log::warning('Auto-Sweep 9PSB Transfer Pending/Failed: ', ['response' => $transferResponse]);
-                                $this->error("Sweep pending/failed for Merchant {$merchant->id}");
+                                $this->error("Sweep pending/failed for Merchant {$merchant->id}. Refunding wallet.");
+                                $merchant->increment('wallet_balance', $totalDeduction);
+                                $transaction->update(['status' => 'failed']);
                             }
 
                         } catch (\Exception $e) {
                             Log::error("Auto-Sweep 9PSB Error: " . $e->getMessage());
                             $this->error("Sweep error for Merchant {$merchant->id}: " . $e->getMessage());
+                            $merchant->increment('wallet_balance', $totalDeduction);
+                            $transaction->update(['status' => 'failed']);
                         }
 
                         $processedCount++;
